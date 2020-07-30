@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<launch>
+
+    <!-- 发布的是 child_frame_id ====> frame_id 坐标系的变换 -->
+    <!-- static_transform_publisher x y z yaw pitch roll frame_id child_frame_id period_in_ms -->
+    <!-- static_transform_publisher x y z qx qy qz qw frame_id child_frame_id  period_in_ms -1.5707963267949 -->
+    <param name="/use_sime_time" value="false"/>
+    <node name="bl_imu_tf" pkg="tf" type="static_transform_publisher" respawn="true" args="0 0 0 -1.5707963267949 0 0  base_link imu_link 100" output="log"/>
+    <node name="gps_imu_tf" pkg="tf" type="static_transform_publisher" respawn="true" args="0 0 0 0 0 0 1 imu_link gps 100" output="log"/>
+
+    <node pkg="wgs_conversions" type="lla_conversion" name="lla_conversion" clear_params="true" output="screen">
+        <param name="CONVERT_MODE" value="ENU" />
+<!--        <param name="frequency" value="50" />                                   -->
+<!--        <param name="yaw_offset" value="0" />                                   -->
+<!--        <param name="wait_for_datum" value="true" />                            -->
+<!--        <rosparam param="datum">[29.75761931, 121.51792678, 4.7]</rosparam>     -->
+        <!-- 输入 -->
+        <!-- from: 本节点订阅采用的Topic     to: 其他节点发布的Topic -->
+        <remap from="/gps/fix"            to="/gps/fix"  />
+        <remap from="/gps/ins"            to="/gps/ins" />
+        <remap from="/imu/data"           to="/imu/data" /> 
+
+        <!-- 输出 -->
+        <remap from="/odometry/gpsFix"    to="/odometry/gpsFix" />
+        <remap from="/odometry/ins"       to="/odometry/ins" />
+    </node>
+
+</launch>
