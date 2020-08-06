@@ -86,39 +86,15 @@ wgs_convertor::wgs_convertor(ros::NodeHandle nh, ros::NodeHandle nh_priv)
     // 读取手动设置的地图原点的gps数据
     if (nh.hasParam("datum"))
     {
-        XmlRpc::XmlRpcValue datum_config;
-        try
-        {
-            double datum_lat;
-            double datum_lon;
-            double datum_hei;
-            nh.getParam("datum", datum_config);
 
-            ROS_ASSERT(datum_config.getType() == XmlRpc::XmlRpcValue::TypeArray);
-            ROS_ASSERT(datum_config.size() >= 3);
+        std::vector<double> ori_vec(3,0);
+        nh.param<std::vector<double>>("datum", ori_vec, std::vector<double>());
 
-            if (datum_config.size() > 3)
-            {
-                ROS_WARN_STREAM("Deprecated datum parameter configuration detected. Only the first three parameters "
-                                "(latitude, longitude, yaw) will be used. frame_ids will be derived from odometry and navsat inputs.");
-            }
+        latitude_ori=ori_vec[0];
+        longitude_ori=ori_vec[1];
+        altitude_ori=ori_vec[2];
 
-            std::ostringstream ostr;
-            ostr << std::setprecision(20) << datum_config[0] << " " << datum_config[1] << " " << datum_config[2];
-            std::istringstream istr(ostr.str());
-            istr >> datum_lat >> datum_lon >> datum_hei;
-
-            latitude_ori=datum_lat;
-            longitude_ori=datum_lon;
-            height_ori=datum_hei;
-
-            ROS_INFO("datum: [%f  %f  %f]",latitude_ori,longitude_ori,height_ori);
-        }
-        catch (XmlRpc::XmlRpcException &e)
-        {
-            ROS_ERROR_STREAM("ERROR reading sensor config: " << e.getMessage() <<
-                             " for process_noise_covariance (type: " << datum_config.getType() << ")");
-        }
+        ROS_INFO("datum: [%f  %f  %f]",latitude_ori,longitude_ori,altitude_ori);
     }
 
     // "gps/fix" 来自GPS/RTK FIX数据
@@ -138,11 +114,6 @@ wgs_convertor::wgs_convertor(ros::NodeHandle nh, ros::NodeHandle nh_priv)
     // 2. 发布器：将坐标和速度信息发布，用来记录waypoint ====> [暂时策略]
     ins_pos_waypoint_pub_=nh.advertise<geometry_msgs::PoseStamped>("/current_pose",50);
     ins_vel_waypoint_pub_=nh.advertise<geometry_msgs::TwistStamped>("/current_velocity",50);
-
-    // double frequency;
-    // nh_priv.param("frequency", frequency, 10.0);
-    // 定时器，定时调用
-    // processTimer_ = nh.createTimer(ros::Duration(1./frequency), &wgs_convertor::process, this);
 }
 
 
@@ -152,7 +123,7 @@ void wgs_convertor::gpsFixCallback(const sensor_msgs::NavSatFixConstPtr& msg)
     // 取msg的坐标系，作为 gps坐标系
     gps_frame_id_ = msg->header.frame_id;
 
-    ROS_INFO("got gps msg");
+    // ROS_INFO("got gps msg");
 
     if (gps_frame_id_.empty())
     {
@@ -161,7 +132,7 @@ void wgs_convertor::gpsFixCallback(const sensor_msgs::NavSatFixConstPtr& msg)
     }
 
     // Make sure the GPS data is usable
-    // 取保gps数据可用
+    // 确保gps数据可用
     bool good_gps = (msg->status.status != sensor_msgs::NavSatStatus::STATUS_NO_FIX &&
             !std::isnan(msg->altitude) &&
             !std::isnan(msg->latitude) &&
@@ -193,12 +164,13 @@ void wgs_convertor::gpsFixCallback(const sensor_msgs::NavSatFixConstPtr& msg)
                 latest_output_covariance_(i, j) = msg->position_covariance[POSITION_SIZE * i + j];
             }
         }
+
         // 更新时间戳
         gps_update_time_ = msg->header.stamp;
         gps_updated_ = true;
 
 
-        ROS_INFO("GPS in map :[%f  %f  %f]",
+        ROS_INFO("GPS-RTK in map :[%f  %f  %f]",
                  latest_output_transform_.getOrigin().x(),
                  latest_output_transform_.getOrigin().y(),
                  latest_output_transform_.getOrigin().z());
@@ -354,8 +326,8 @@ void wgs_convertor::insCallback(const nav_msgs::OdometryConstPtr &msg)
             transformTfGeom.child_frame_id=base_link_frame_id_;
 
             ins_pos_in_map_pub_.publish(ins_odom_convert_result);
-            ins_pos_waypoint_pub_.publish(current_pose_4_waypoint);
-            tf_broadcaster_.sendTransform(transformTfGeom);
+            //ins_pos_waypoint_pub_.publish(current_pose_4_waypoint);
+            //tf_broadcaster_.sendTransform(transformTfGeom);
         }
         else
         {
@@ -373,13 +345,13 @@ void wgs_convertor::velCallback(const geometry_msgs::TwistStampedConstPtr &msg)
     vel_.twist.linear.y=0;
     vel_.twist.linear.z=0;
     vel_.header.frame_id="base_link";
-    ins_vel_waypoint_pub_.publish(vel_);
+    //ins_vel_waypoint_pub_.publish(vel_);
 }
 
 //===================================== 两种坐标系转换 ======================================//
 void wgs_convertor::lla2enu(double lla[], double enu_output[])
 {
-    double ref[]={latitude_ori,longitude_ori,height_ori};
+    double ref[]={latitude_ori,longitude_ori,altitude_ori};
     converter.lla2enu(enu_output,lla,ref);
 }
 

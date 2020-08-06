@@ -44,7 +44,7 @@ public:
     //! @brief 原点经纬高
     double latitude_ori=0;
     double longitude_ori=0;
-    double height_ori=0;
+    double altitude_ori=0;
 
     //! @brief 坐标系
     std::string imu_frame_id_;
