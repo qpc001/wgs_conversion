@@ -94,7 +94,7 @@ wgs_convertor::wgs_convertor(ros::NodeHandle nh, ros::NodeHandle nh_priv)
         longitude_ori=ori_vec[1];
         altitude_ori=ori_vec[2];
 
-        ROS_INFO("datum: [%f  %f  %f]",latitude_ori,longitude_ori,altitude_ori);
+        ROS_INFO("datum: [%.12f  %.12f  %.12f]",latitude_ori,longitude_ori,altitude_ori);
     }
 
     // "gps/fix" 来自GPS/RTK FIX数据
